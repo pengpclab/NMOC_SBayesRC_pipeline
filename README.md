@@ -1,5 +1,7 @@
 # NMOC SBayesRC analysis scripts
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21796787.svg)](https://doi.org/10.5281/zenodo.21796787)
+
 This repository contains the scripts used for SBayesRC-based polygenic risk
 score analyses in the non-mucinous ovarian cancer (NMOC) study.
 
@@ -221,3 +223,9 @@ final SBayesRC annotation matrices are not included.
 The SBayesRC software is available from its original repository:
 
 https://github.com/zhilizheng/SBayesRC
+
+## Archived release
+
+Version `v1.0.0` of this repository is archived on Zenodo:
+
+**DOI:** [10.5281/zenodo.21796787](https://doi.org/10.5281/zenodo.21796787)
