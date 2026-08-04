@@ -1,0 +1,134 @@
+# NMOC SBayesRC analysis scripts
+
+This repository contains the scripts used for SBayesRC-based polygenic risk
+score analyses in the non-mucinous ovarian cancer (NMOC) study.
+
+The main workflow includes SBayesRC model fitting, PLINK2-based PRS
+calculation, preparation of validation datasets, and evaluation of PRS
+performance. Additional scripts are included for PRS percentile-bin and
+functional annotation enrichment analyses.
+
+Individual-level genotype and phenotype data, intermediate files, and
+study-specific annotation source files are not included.
+
+## Repository structure
+
+```text
+scripts/
+├── step1_sbayesrc/
+├── step2_prs_calculation/
+├── step3_validation_data/
+├── step4_validation_statistics/
+└── additional_analyses/
+```
+
+## Main workflow: Steps 1–4
+
+### Step 1: SBayesRC analysis
+
+Directory: [`scripts/step1_sbayesrc/`](scripts/step1_sbayesrc/)
+
+- `step1_SBayesRC_v2.r` runs the SBayesRC `tidy`, `impute`, and `sbayesrc`
+  functions for one cross-validation group and LD reference panel. It then adds
+  chromosome, position, and allele information to the SBayesRC weight file for
+  subsequent PLINK2 scoring.
+- `submit_step1_SBayesRC_v2_single.sh` submits selected analyses as individual Slurm jobs.
+- `submit_step1_SBayesRC_v2_array.sh` submits multiple runs simultaneously.
+
+The R script accepts:
+
+```text
+Rscript step1_SBayesRC_v2.r GROUP_NUM LD_FOLDER WITH_ANNOTATION [ANNOTATION_FILE]
+```
+
+The functional annotation matrix was prepared separately as a study-specific input
+in the format required by SBayesRC. Annotation-preparation scripts and source
+files are not included in this repository.
+
+### Step 2: PRS calculation
+
+Directory:
+[`scripts/step2_prs_calculation/`](scripts/step2_prs_calculation/)
+
+- `step2_prs_calculation_single.sh` calculates PRS for SBayesRC weight file as a single job
+- `step2_prs_calculation_array.sh` calculates PRS for one SBayesRC weight file per Slurm
+  array task.
+
+For each chromosome, PLINK2 calculates centered scores using columns
+1–3 of the SBayesRC weight file:
+
+```text
+variant ID, effect allele, SNP weight
+```
+
+The chromosome-level scores are joined by `IID` and summed to produce
+`score_file/prs_result_sum.txt`.
+
+### Step 3: Prepare validation data
+
+Directory:
+[`scripts/step3_validation_data/`](scripts/step3_validation_data/)
+
+- `step3_file_modification.py` joins the phenotype table, summed PRS, and
+  `groups_info.txt`. It selects NMOC cases (`all_non_mucinous == 1`) and
+  controls (`all_non_mucinous == 0`) from the requested validation group and
+  writes separate case and control files.
+
+The script accepts:
+
+```text
+python step3_file_modification.py OUTPUT_FOLDER GROUP_NUM
+```
+
+### Step 4: Validation statistics
+
+Directory:
+[`scripts/step4_validation_statistics/`](scripts/step4_validation_statistics/)
+
+- `step4_stat_calculation_v3.r` calculates AUC with a DeLong 95% interval, the
+  likelihood-ratio chi-square comparing PRS and intercept-only logistic models,
+  and the log odds ratio per standard deviation of PRS with its 95% interval.
+- `submit_step3_step4_single.sh` runs Steps 3 and 4 for one result
+  folder/group pair.
+- `submit_step3_step4_v2_array.sh` runs Steps 3 and 4 as a Slurm array and
+  uses `flock` when aggregating result rows.
+
+The R script accepts:
+
+```text
+Rscript step4_stat_calculation_v3.r OUTPUT_FOLDER GROUP_NUM
+```
+
+## Additional analyses
+
+Directory:
+[`scripts/additional_analyses/`](scripts/additional_analyses/)
+
+### PRS percentile-bin analysis
+
+- `prs_percentile_bin_analysis.R` defines PRS percentile cutoffs from controls,
+  uses the 40–60% group as the reference, and estimates odds ratios, 95%
+  intervals, and p-values for the remaining percentile groups.
+- `submit_prs_percentile_bin_analysis.sh` is the corresponding Slurm launcher.
+
+### Annotation enrichment analysis
+
+- `annotation_enrichment_analysis.R` summarizes SBayesRC per-SNP heritability
+  enrichment across five cross-validation groups and the HapMap3 and Imputed
+  reference panels. It writes annotation-level summary tables and the corresponding
+  supplementary figures.
+- `submit_annotation_enrichment_analysis.sh` is the corresponding Slurm
+  launcher.
+
+For the annotation-specific figures, error bars represent the minimum and
+maximum fold-specific enrichment point estimates. They are not confidence
+intervals or posterior credible intervals.
+
+## Study-specific paths and dependencies
+
+The scripts contain the HPC paths, Conda environment names, resource
+requests, and file naming conventions used for the study. These paths must be
+updated if the scripts are run in another environment.
+
+Required software includes R, SBayesRC, tidyverse, pROC, lmtest, patchwork,
+scales, Python with pandas, PLINK2, and Slurm.
